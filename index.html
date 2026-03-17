@@ -72,8 +72,45 @@
         </div>
 
         <main id="content" class="hidden">
-            <h2 class="text-2xl font-semibold text-gray-800 border-b pb-3 mb-6">Live Now</h2>
-            <div id="current-container" class="space-y-4"></div>
+            <!-- Nav Tabs -->
+            <div class="mb-6">
+                <div class="border-b border-gray-200">
+                    <nav class="-mb-px flex space-x-8" aria-label="Tabs">
+                        <button
+                            class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-blue-500 text-blue-600"
+                            data-target="tab-current">
+                            Now Playing
+                        </button>
+                        <button
+                            class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            data-target="tab-upcoming">
+                            Upcoming
+                        </button>
+                        <button
+                            class="tab-btn whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                            data-target="tab-past">
+                            Finished
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Tab Panels -->
+            <div id="tab-panels">
+                <div id="tab-current" class="tab-panel space-y-4"></div>
+                <div id="tab-upcoming" class="tab-panel hidden space-y-4"></div>
+                <div id="tab-past" class="tab-panel hidden space-y-4">
+                    <div class="mb-4 p-4 bg-gray-50 rounded-lg border">
+                        <label for="history-date-picker" class="block text-sm font-medium text-gray-700 mb-1">Select a
+                            day to review:</label>
+                        <input type="date" id="history-date-picker" name="history-date"
+                            class="block w-full md:w-auto p-2 border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div id="history-container" class="space-y-4">
+                        <p class="text-gray-500 p-4 text-center">Select a date to view past programs.</p>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
@@ -86,7 +123,14 @@
             const errorMessageEl = document.getElementById('error-message');
             const contentEl = document.getElementById('content');
             const timezoneSelectEl = document.getElementById('timezone-select');
-            const currentContainer = document.getElementById('current-container');
+
+            const currentContainer = document.getElementById('tab-current');
+            const upcomingContainer = document.getElementById('tab-upcoming');
+            const historyContainer = document.getElementById('history-container');
+            const historyDatePicker = document.getElementById('history-date-picker');
+
+            const tabButtons = document.querySelectorAll('.tab-btn');
+            const tabPanels = document.querySelectorAll('.tab-panel');
 
             let tc2ChannelId = null;
 
@@ -95,6 +139,70 @@
                 contentEl.classList.add('hidden');
                 errorEl.classList.add('hidden');
                 currentContainer.innerHTML = '';
+                upcomingContainer.innerHTML = '';
+                historyContainer.innerHTML = '<p class="text-gray-500 p-4 text-center">Select a date to view past programs.</p>';
+                historyDatePicker.value = '';
+
+                tabButtons.forEach((btn, index) => {
+                    if (index === 0) {
+                        btn.classList.add('border-blue-500', 'text-blue-600');
+                        btn.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                    } else {
+                        btn.classList.remove('border-blue-500', 'text-blue-600');
+                        btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                    }
+                });
+                tabPanels.forEach((panel, index) => {
+                    panel.classList.toggle('hidden', index !== 0);
+                });
+            }
+
+            function setupTabs() {
+                tabButtons.forEach(button => {
+                    button.addEventListener('click', () => {
+                        tabButtons.forEach(btn => {
+                            btn.classList.remove('border-blue-500', 'text-blue-600');
+                            btn.classList.add('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+                        });
+                        button.classList.add('border-blue-500', 'text-blue-600');
+                        button.classList.remove('border-transparent', 'text-gray-500', 'hover:text-gray-700', 'hover:border-gray-300');
+
+                        tabPanels.forEach(panel => panel.classList.add('hidden'));
+                        const targetPanelId = button.getAttribute('data-target');
+                        document.getElementById(targetPanelId).classList.remove('hidden');
+                    });
+                });
+            }
+
+            function showCertInstructions() {
+                resetUI();
+                loadingEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+
+                errorMessageEl.innerHTML = `
+                    <div class="space-y-4">
+                        <p class="font-semibold text-lg">Local SSL Certificate Warning</p>
+                        <p>It looks like your browser is blocking the connection to the local API because the SSL certificate is self-signed.</p>
+                        <p>To fix this and load the dashboard during local development, please follow these steps:</p>
+                        <ol class="list-decimal pl-5 space-y-2 mt-2 font-medium">
+                            <li>Open a new tab and go to: <a href="${API_BASE_URL}/channels" target="_blank" class="text-blue-600 hover:underline bg-blue-50 px-2 py-1 rounded border border-blue-200">${API_BASE_URL}/channels</a></li>
+                            <li>Your browser will show a warning (e.g., "Your connection is not private").</li>
+                            <li>Click <strong>Advanced</strong> (or similar depending on your browser).</li>
+                            <li>Click <strong>Proceed to epg.incbrief.com (unsafe)</strong> or <strong>Accept the Risk and Continue</strong>.</li>
+                            <li>You should see some raw JSON data appear.</li>
+                            <li>Come back to this page and refresh!</li>
+                        </ol>
+                    </div>
+                `;
+            }
+
+            function getSelectedTimezoneAbbreviation() {
+                if (timezoneSelectEl && timezoneSelectEl.options && timezoneSelectEl.selectedIndex >= 0) {
+                    return timezoneSelectEl.options[timezoneSelectEl.selectedIndex].text;
+                }
+                const storedMode = sessionStorage.getItem('timezone') || 'UTC';
+                const timezones = { 'America/Los_Angeles': 'PST', 'America/New_York': 'EST', 'UTC': 'UTC', 'CET': 'CET' };
+                return timezones[storedMode] || 'UTC';
             }
 
             function getSelectedTimezone() {
@@ -103,16 +211,16 @@
 
             function formatTimeRange(start, stop) {
                 const timeZone = getSelectedTimezone();
+                const abbr = getSelectedTimezoneAbbreviation();
                 const options = { hour: 'numeric', minute: 'numeric', hour12: true, timeZone };
                 const dateOptions = { month: 'short', day: 'numeric', timeZone };
-                return `${start.toLocaleTimeString('en-US', options)} - ${stop.toLocaleTimeString('en-US', options)} (${start.toLocaleDateString('en-US', dateOptions)})`;
+                return `${start.toLocaleTimeString('en-US', options)} ${abbr} - ${stop.toLocaleTimeString('en-US', options)} ${abbr} (${start.toLocaleDateString('en-US', dateOptions)})`;
             }
 
             function getDurationInMinutes(start, stop) {
                 return Math.round((stop.getTime() - start.getTime()) / (1000 * 60));
             }
 
-            // Expose function globally so the inline onclick can find it
             window.downloadImageForCard = function (programId) {
                 const images = document.querySelectorAll('.program-image-' + programId);
                 let visibleImageSrc = null;
@@ -128,7 +236,6 @@
                 });
 
                 if (visibleImageSrc) {
-                    // Open image in a new tab
                     window.open(visibleImageSrc, '_blank');
                 } else {
                     alert('No image available to download.');
@@ -168,24 +275,67 @@
                            </div>
                        </div>
                        
-                       <div class="p-5 flex-1 flex flex-col">
-                           <div>
-                               <p class="text-sm font-semibold text-blue-600">${formatTimeRange(start, stop)}</p>
-                               <h4 class="text-xl font-bold text-gray-900 mt-1">${title}</h4>
-                               <div class="flex items-center gap-x-3 text-md font-medium text-gray-700 mt-1">
-                                   ${sub_title ? `<h5>${sub_title}</h5>` : ''}
-                                   ${episode_num ? `<span class="text-sm text-gray-500">${episode_num}</span>` : ''}
+                       <div class="p-6 flex-1 flex flex-col bg-gray-50">
+                           <div class="flex-grow space-y-4">
+                               <div>
+                                   <span class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Day of the Week</span>
+                                   <p class="text-sm font-semibold text-gray-900">${start.toLocaleDateString('en-US', { weekday: 'long', timeZone: getSelectedTimezone() })}</p>
                                </div>
-                               ${description ? `<p class="text-sm text-gray-600 mt-3">${shortDesc}</p>` : ''}
-                               <div class="flex flex-wrap gap-2 mt-4 text-xs">
-                                   ${live ? '<span class="bg-red-500 text-white px-3 py-1 rounded-full font-bold">LIVE</span>' : ''}
-                                   ${category ? `<span class="bg-gray-200 text-gray-800 px-3 py-1 rounded-full font-medium">${category}</span>` : ''}
-                                   <span class="bg-gray-200 text-gray-800 px-3 py-1 rounded-full font-medium">${getDurationInMinutes(start, stop)} min</span>
+                               
+                               <div>
+                                   <span class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Title</span>
+                                   <h4 class="text-xl font-bold text-gray-900 leading-tight">${title}</h4>
+                               </div>
+
+                               ${sub_title ? `
+                               <div>
+                                   <span class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Content</span>
+                                   <p class="text-md font-medium text-gray-800 leading-tight">${sub_title}</p>
+                               </div>
+                               ` : ''}
+
+                               ${description ? `
+                               <div>
+                                   <span class="text-xs font-bold text-gray-500 uppercase tracking-widest block mb-1">Synopsis</span>
+                                   <p class="text-sm text-gray-700 leading-relaxed">${description}</p>
+                               </div>
+                               ` : ''}
+                               
+                               <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3 mt-5 pt-4 border-t border-gray-200 text-sm">
+                                   <div class="flex items-start">
+                                       <strong class="w-24 flex-shrink-0 text-gray-800">Date:</strong>
+                                       <span class="text-gray-700">${start.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', timeZone: getSelectedTimezone() })}</span>
+                                   </div>
+                                   <div class="flex items-start">
+                                       <strong class="w-24 flex-shrink-0 text-gray-800">Start Time:</strong>
+                                       <span class="text-gray-700">${start.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true, timeZone: getSelectedTimezone() })} ${getSelectedTimezoneAbbreviation()}</span>
+                                   </div>
+                                   <div class="flex items-start">
+                                       <strong class="w-24 flex-shrink-0 text-gray-800">End Time:</strong>
+                                       <span class="text-gray-700">${stop.toLocaleTimeString('en-US', { hour: 'numeric', minute: 'numeric', hour12: true, timeZone: getSelectedTimezone() })} ${getSelectedTimezoneAbbreviation()}</span>
+                                   </div>
+                                   <div class="flex items-start">
+                                       <strong class="w-24 flex-shrink-0 text-gray-800">Channel:</strong>
+                                       <span class="text-gray-700">TC2</span>
+                                   </div>
+                                   <div class="flex items-start">
+                                       <strong class="w-24 flex-shrink-0 text-gray-800">Station:</strong>
+                                       <span class="text-gray-700">T2 TV US</span>
+                                   </div>
+                                   <div class="flex items-start">
+                                       <strong class="w-24 flex-shrink-0 text-gray-800">Tag:</strong>
+                                       <span class="text-white bg-red-500 px-2 py-0.5 rounded text-xs font-bold leading-none tracking-wide mt-0.5">LIVE</span>
+                                   </div>
+                                   <div class="flex items-start">
+                                       <strong class="w-24 flex-shrink-0 text-gray-800">Genre:</strong>
+                                       <span class="text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded text-xs font-bold leading-none tracking-wide mt-0.5">Tennis</span>
+                                   </div>
                                </div>
                            </div>
-                           <div class="mt-auto pt-4 flex justify-end">
-                               <button onclick="downloadImageForCard('${id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow text-sm font-medium transition-colors flex items-center">
-                                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
+                           
+                           <div class="mt-6 pt-4 border-t border-gray-200 flex justify-end">
+                               <button onclick="downloadImageForCard('${id}')" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded shadow-md text-sm font-semibold transition-all ease-in-out duration-200 flex items-center">
+                                   <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg>
                                    Download Image
                                </button>
                            </div>
@@ -203,17 +353,58 @@
                     if (!response.ok) throw new Error(`Failed to fetch schedule: ${response.statusText}`);
                     const data = await response.json();
 
-                    currentContainer.innerHTML = data.current.length > 0
-                        ? data.current.map(p => createProgramCard(p)).join('')
+                    const liveCurrent = data.current.filter(p => p.live === 1);
+                    const liveUpcoming = data.upcoming.filter(p => p.live === 1);
+
+                    currentContainer.innerHTML = liveCurrent.length > 0
+                        ? liveCurrent.map(p => createProgramCard(p)).join('')
                         : '<p class="text-gray-500 p-4 text-center">Nothing is currently live on TC2.</p>';
+
+                    upcomingContainer.innerHTML = liveUpcoming.length > 0
+                        ? liveUpcoming.map(p => createProgramCard(p)).join('')
+                        : '<p class="text-gray-500 p-4 text-center">No upcoming live programs found.</p>';
 
                     loadingEl.classList.add('hidden');
                     contentEl.classList.remove('hidden');
                 } catch (err) {
                     console.error(err);
+                    if ((err && err.message && err.message.toLowerCase().includes('failed to fetch')) || err.name === 'TypeError') {
+                        showCertInstructions();
+                        return;
+                    }
                     errorMessageEl.textContent = err.message || "An error occurred.";
                     loadingEl.classList.add('hidden');
                     errorEl.classList.remove('hidden');
+                }
+            }
+
+            async function loadHistory(channelId, dateString) {
+                historyContainer.innerHTML = '<div class="loader mx-auto"></div>';
+                try {
+                    const response = await fetch(`${API_BASE_URL}/history/${channelId}/${dateString}`);
+                    if (!response.ok) throw new Error(`Failed to fetch history: ${response.statusText}`);
+                    const programs = await response.json();
+                    const livePrograms = programs.filter(p => p.live === 1);
+
+                    if (livePrograms.length > 0) {
+                        historyContainer.innerHTML = livePrograms.map(p => createProgramCard(p)).join('');
+                    } else {
+                        historyContainer.innerHTML = '<p class="text-gray-500 p-4 text-center">No live programs found for this date.</p>';
+                    }
+                } catch (err) {
+                    console.error("Error loading history:", err);
+                    if ((err && err.message && err.message.toLowerCase().includes('failed to fetch')) || err.name === 'TypeError') {
+                        showCertInstructions();
+                        return;
+                    }
+                    historyContainer.innerHTML = `<p class="text-red-500 p-4 text-center">Error loading history: ${err.message}</p>`;
+                }
+            }
+
+            function handleDateChange(e) {
+                const selectedDate = e.target.value;
+                if (selectedDate && tc2ChannelId) {
+                    loadHistory(tc2ChannelId, selectedDate);
                 }
             }
 
@@ -286,11 +477,17 @@
                         loadData();
                     });
 
+                    setupTabs();
+                    historyDatePicker.addEventListener('change', handleDateChange);
                     document.body.addEventListener('click', handleCarouselClick);
 
                     loadData();
                 } catch (err) {
                     console.error("Initialization failed:", err);
+                    if ((err && err.message && err.message.toLowerCase().includes('failed to fetch')) || err.name === 'TypeError') {
+                        showCertInstructions();
+                        return;
+                    }
                     errorMessageEl.textContent = err.message || "Could not initialize app.";
                     resetUI();
                     loadingEl.classList.add('hidden');
