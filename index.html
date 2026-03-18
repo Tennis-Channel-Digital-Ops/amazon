@@ -200,13 +200,13 @@
                 if (timezoneSelectEl && timezoneSelectEl.options && timezoneSelectEl.selectedIndex >= 0) {
                     return timezoneSelectEl.options[timezoneSelectEl.selectedIndex].text;
                 }
-                const storedMode = sessionStorage.getItem('timezone') || 'UTC';
+                const storedMode = sessionStorage.getItem('timezone') || 'America/New_York';
                 const timezones = { 'America/Los_Angeles': 'PST', 'America/New_York': 'EST', 'UTC': 'UTC', 'CET': 'CET' };
-                return timezones[storedMode] || 'UTC';
+                return timezones[storedMode] || 'EST';
             }
 
             function getSelectedTimezone() {
-                return sessionStorage.getItem('timezone') || 'UTC';
+                return sessionStorage.getItem('timezone') || 'America/New_York';
             }
 
             function formatTimeRange(start, stop) {
@@ -441,7 +441,7 @@
             }
 
             function populateTimezones() {
-                const timezones = { 'PST': 'America/Los_Angeles', 'EST': 'America/New_York', 'UTC': 'UTC', 'CET': 'CET' };
+                const timezones = { 'EST': 'America/New_York', 'PST': 'America/Los_Angeles', 'UTC': 'UTC', 'CET': 'CET' };
                 const selectedTimezone = getSelectedTimezone();
 
                 for (const [name, value] of Object.entries(timezones)) {
@@ -453,8 +453,8 @@
                 }
 
                 if (!Object.values(timezones).includes(selectedTimezone)) {
-                    timezoneSelectEl.value = 'UTC';
-                    sessionStorage.setItem('timezone', 'UTC');
+                    timezoneSelectEl.value = 'America/New_York';
+                    sessionStorage.setItem('timezone', 'America/New_York');
                 }
             }
 
